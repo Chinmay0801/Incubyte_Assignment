@@ -52,6 +52,14 @@ describe('AuthService', () => {
       await expect(auth.register({ ...credentials, email: 'JANE@example.com' })).rejects.toBeInstanceOf(ConflictError);
     });
 
+    it('reports a conflict (not a crash) when the same email registers concurrently', async () => {
+      const results = await Promise.allSettled([auth.register(credentials), auth.register(credentials)]);
+
+      expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+      const rejected = results.find((r) => r.status === 'rejected') as PromiseRejectedResult;
+      expect(rejected.reason).toBeInstanceOf(ConflictError);
+    });
+
     it('issues a token that encodes the user id and role', async () => {
       const { token, user } = await auth.register(credentials);
       const payload = jwt.verify(token, SECRET) as jwt.JwtPayload;

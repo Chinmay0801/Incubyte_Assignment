@@ -1,0 +1,15 @@
+{
+  "name": "car-dealership-inventory",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Lotline - full-stack Car Dealership Inventory System (TDD kata)",
+  "scripts": {
+    "install:all": "npm --prefix backend install && npm --prefix frontend install",
+    "seed": "npm --prefix backend run seed",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "test": "npm --prefix backend test && npm --prefix frontend test",
+    "test:coverage": "npm --prefix backend run test:coverage && npm --prefix frontend run test:coverage",
+    "build": "npm --prefix frontend run build"
+  }
+}

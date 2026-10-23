@@ -5,3 +5,6 @@ dist/
 *.db
 .DS_Store
 *.log
+
+# Kata brief (kept locally, not published)
+AI_Kata_*.pdf

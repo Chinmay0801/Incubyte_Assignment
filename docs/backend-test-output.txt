@@ -1,0 +1,29 @@
+
+ RUN  v5.0.5 C:/Chinmay/College/Company/Incubyte/backend
+      Coverage enabled with v8
+
+
+ Test Files  10 passed (10)
+      Tests  158 passed (158)
+   Start at  22:00:13
+   Duration  7.28s (import 46%, tests 44%, transform 6%, worker 3%)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |     100 |    96.89 |     100 |     100 |                   
+ src/middleware    |     100 |    95.23 |     100 |     100 |                   
+  errorHandler.ts  |     100 |    93.33 |     100 |     100 | 21                
+ src/repositories  |     100 |       95 |     100 |     100 |                   
+  ...Repository.ts |     100 |    93.75 |     100 |     100 | 107               
+ src/services      |     100 |    95.23 |     100 |     100 |                   
+  authService.ts   |     100 |    88.88 |     100 |     100 | 78-83             
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 100% ( 265/265 )
+Branches     : 96.89% ( 125/129 )
+Functions    : 100% ( 85/85 )
+Lines        : 100% ( 252/252 )
+================================================================================

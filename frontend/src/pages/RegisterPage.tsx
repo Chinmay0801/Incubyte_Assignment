@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { AuthLayout } from '../components/AuthLayout';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import { errorMessage } from '../utils/format';
 
 const MIN_PASSWORD_LENGTH = 8;

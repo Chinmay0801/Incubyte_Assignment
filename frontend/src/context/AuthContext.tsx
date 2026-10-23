@@ -1,21 +1,7 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import * as authApi from '../api/auth';
 import type { AuthResponse, User } from '../types';
-
-export const TOKEN_STORAGE_KEY = 'lotline.token';
-
-export interface AuthContextValue {
-  user: User | null;
-  token: string | null;
-  /** True while a stored token is being checked on start-up. */
-  isLoading: boolean;
-  isAdmin: boolean;
-  login: (credentials: authApi.Credentials) => Promise<void>;
-  register: (registration: authApi.Registration) => Promise<void>;
-  logout: () => void;
-}
-
-export const AuthContext = createContext<AuthContextValue | null>(null);
+import { AuthContext, TOKEN_STORAGE_KEY, type AuthContextValue } from './useAuth';
 
 const readStoredToken = (): string | null => {
   try {
@@ -92,12 +78,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth(): AuthContextValue {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used inside an <AuthProvider>');
-  }
-  return context;
 }

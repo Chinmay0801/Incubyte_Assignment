@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 
 /** Signed-in shell: brand on the left, the current user and sign-out on the right. */
 export function AppLayout({ children }: { children: ReactNode }) {

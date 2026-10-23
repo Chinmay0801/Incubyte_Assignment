@@ -2,7 +2,7 @@ import type { ReactElement } from 'react';
 import { render } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { vi } from 'vitest';
-import { AuthContext, type AuthContextValue } from '../context/AuthContext';
+import { AuthContext, type AuthContextValue } from '../context/useAuth';
 import type { User, Vehicle } from '../types';
 
 export const regularUser: User = { id: 1, name: 'Jane Buyer', email: 'jane@example.com', role: 'user' };

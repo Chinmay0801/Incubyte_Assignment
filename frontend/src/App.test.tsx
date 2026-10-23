@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import App from './App';
-import { AuthContext } from './context/AuthContext';
+import { AuthContext } from './context/useAuth';
 import * as vehiclesApi from './api/vehicles';
 import { adminUser, makeAuth, regularUser, signedInAs } from './test/renderWithProviders';
 

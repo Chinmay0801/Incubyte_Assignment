@@ -8,7 +8,7 @@ import { SearchFilters } from '../components/SearchFilters';
 import { Toast, type ToastMessage } from '../components/Toast';
 import { VehicleCard } from '../components/VehicleCard';
 import { VehicleForm } from '../components/VehicleForm';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import type { Vehicle, VehicleFilters, VehicleInput, VehicleUpdate } from '../types';
 import { errorMessage, formatStockNumber } from '../utils/format';
 
@@ -52,24 +52,34 @@ export function DashboardPage() {
     [logout],
   );
 
-  const loadAll = useCallback(async () => {
-    setStatus('loading');
-    try {
-      const list = await vehiclesApi.listVehicles(token!);
-      setVehicles(list);
-      setCategories(sortedUnique(list.map((v) => v.category)));
-      setIsFiltered(false);
-      setStatus('ready');
-    } catch (error) {
-      if (handleAuthError(error)) return;
-      setLoadError(errorMessage(error));
-      setStatus('error');
-    }
-  }, [token, handleAuthError]);
+  // Bumping this re-runs the load effect (retry, clearing filters).
+  const [loadRequest, setLoadRequest] = useState(0);
 
   useEffect(() => {
-    void loadAll();
-  }, [loadAll]);
+    let cancelled = false;
+    vehiclesApi.listVehicles(token!).then(
+      (list) => {
+        if (cancelled) return;
+        setVehicles(list);
+        setCategories(sortedUnique(list.map((v) => v.category)));
+        setIsFiltered(false);
+        setStatus('ready');
+      },
+      (error: unknown) => {
+        if (cancelled || handleAuthError(error)) return;
+        setLoadError(errorMessage(error));
+        setStatus('error');
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [token, handleAuthError, loadRequest]);
+
+  const reload = () => {
+    setStatus('loading');
+    setLoadRequest((n) => n + 1);
+  };
 
   const handleSearch = async (filters: VehicleFilters) => {
     try {
@@ -165,7 +175,7 @@ export function DashboardPage() {
       </div>
 
       <div className="mt-6">
-        <SearchFilters categories={categories} onSearch={handleSearch} onReset={loadAll} />
+        <SearchFilters categories={categories} onSearch={handleSearch} onReset={reload} />
       </div>
 
       <div className="mt-4 flex items-center justify-end">
@@ -187,7 +197,7 @@ export function DashboardPage() {
             <p role="alert" className="text-sticker">
               {loadError}
             </p>
-            <button type="button" className="btn-ghost mt-4" onClick={() => void loadAll()}>
+            <button type="button" className="btn-ghost mt-4" onClick={reload}>
               Try again
             </button>
           </div>

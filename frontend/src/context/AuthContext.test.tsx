@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { AuthProvider, TOKEN_STORAGE_KEY, useAuth } from './AuthContext';
+import { AuthProvider } from './AuthContext';
+import { TOKEN_STORAGE_KEY, useAuth } from './useAuth';
 import * as authApi from '../api/auth';
 import { ApiError } from '../api/client';
 

@@ -134,6 +134,14 @@ describe('AuthService', () => {
     });
   });
 
+  it('propagates unexpected persistence errors unchanged', async () => {
+    const failure = new Error('disk full');
+    const failingRepo = { ...users, findByEmail: () => undefined, findById: () => undefined, create: () => { throw failure; } };
+    const failingAuth = new AuthService(failingRepo, { jwtSecret: SECRET, jwtExpiresIn: '1h', saltRounds: 4 });
+
+    await expect(failingAuth.register(credentials)).rejects.toBe(failure);
+  });
+
   describe('ensureAdmin', () => {
     it('creates an admin account when it does not exist', async () => {
       const admin = await auth.ensureAdmin({ name: 'Admin', email: 'admin@example.com', password: 'adminpass' });

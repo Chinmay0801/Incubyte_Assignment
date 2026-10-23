@@ -220,6 +220,23 @@ describe('Vehicles API', () => {
       expect(res.status).toBe(400);
     });
 
+    it('rejects unknown fields', async () => {
+      const { id } = await createVehicle();
+
+      const res = await request(ctx.app).put(`/api/vehicles/${id}`).set(asUser()).send({ price: 1000, colour: 'red' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.details).toEqual([{ field: 'colour', message: 'Unknown field "colour"' }]);
+    });
+
+    it('trims text fields', async () => {
+      const { id } = await createVehicle();
+
+      const res = await request(ctx.app).put(`/api/vehicles/${id}`).set(asUser()).send({ make: '  Lexus  ' });
+
+      expect(res.body.make).toBe('Lexus');
+    });
+
     it('does not allow stock to be changed outside of purchase / restock', async () => {
       const { id } = await createVehicle();
 

@@ -1,4 +1,5 @@
 import type { z } from 'zod';
+import type { Request } from 'express';
 import { ValidationError } from '../errors';
 
 export interface FieldError {
@@ -23,4 +24,12 @@ export function validate<T extends z.ZodType>(schema: T, data: unknown): z.outpu
     throw new ValidationError('Validation failed', toFieldErrors(result.error.issues));
   }
   return result.data;
+}
+
+/**
+ * Validates a request body. Express leaves `req.body` undefined when no JSON
+ * body was sent, so it is treated as `{}` to report per-field errors.
+ */
+export function validateBody<T extends z.ZodType>(schema: T, req: Request): z.output<T> {
+  return validate(schema, req.body ?? {});
 }

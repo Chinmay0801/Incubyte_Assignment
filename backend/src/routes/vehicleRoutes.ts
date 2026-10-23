@@ -10,7 +10,7 @@ import {
   updateVehicleSchema,
   vehicleParamsSchema,
 } from '../validation/schemas';
-import { validate } from '../validation/validate';
+import { validate, validateBody } from '../validation/validate';
 
 /** Vehicle catalogue + inventory endpoints. Every route requires authentication. */
 export function createVehicleRouter(vehicles: VehicleService, auth: AuthService): Router {
@@ -21,7 +21,7 @@ export function createVehicleRouter(vehicles: VehicleService, auth: AuthService)
   router.use(authenticate(auth));
 
   router.post('/', (req, res) => {
-    const input = validate(createVehicleSchema, req.body ?? {});
+    const input = validateBody(createVehicleSchema, req);
     res.status(201).json(vehicles.create(input));
   });
 
@@ -41,7 +41,7 @@ export function createVehicleRouter(vehicles: VehicleService, auth: AuthService)
 
   router.put('/:id', (req, res) => {
     const id = parseId(req.params);
-    const changes = validate(updateVehicleSchema, req.body ?? {});
+    const changes = validateBody(updateVehicleSchema, req);
     res.json(vehicles.update(id, changes));
   });
 
@@ -52,13 +52,13 @@ export function createVehicleRouter(vehicles: VehicleService, auth: AuthService)
 
   router.post('/:id/purchase', (req, res) => {
     const id = parseId(req.params);
-    const { quantity } = validate(purchaseSchema, req.body ?? {});
+    const { quantity } = validateBody(purchaseSchema, req);
     res.json(vehicles.purchase(id, quantity));
   });
 
   router.post('/:id/restock', adminOnly, (req, res) => {
     const id = parseId(req.params);
-    const { quantity } = validate(restockSchema, req.body ?? {});
+    const { quantity } = validateBody(restockSchema, req);
     res.json(vehicles.restock(id, quantity));
   });
 

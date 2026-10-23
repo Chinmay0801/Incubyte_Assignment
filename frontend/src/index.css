@@ -1,0 +1,85 @@
+@import 'tailwindcss';
+
+/*
+ * Lotline design tokens.
+ * Asphalt  - the lot surface the whole app sits on.
+ * Paint    - traffic-paint yellow used for bay lines and primary actions.
+ * Sticker  - the off-white window-sticker paper each vehicle is printed on.
+ * Ink      - text printed on stickers.
+ * Stamp    - red rubber-stamp colour for "sold out" and destructive actions.
+ */
+@theme {
+  --color-asphalt-950: #16191c;
+  --color-asphalt-900: #1f2327;
+  --color-asphalt-800: #2b3036;
+  --color-asphalt-700: #3a4047;
+  --color-asphalt-500: #6b737c;
+  --color-asphalt-300: #a9b0b7;
+  --color-paint: #f2c230;
+  --color-paint-dark: #c99a12;
+  --color-sticker: #fafaf6;
+  --color-sticker-line: #d9d8cf;
+  --color-ink: #1c1f22;
+  --color-ink-soft: #5a6067;
+  --color-stamp: #c8102e;
+  --color-go: #1f8a5b;
+
+  --font-display: 'Big Shoulders Display', 'Arial Narrow', sans-serif;
+  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-asphalt-900 font-sans text-sticker antialiased;
+    /* Faint aggregate texture so the background reads as pavement, not a flat fill. */
+    background-image: radial-gradient(rgb(255 255 255 / 0.025) 1px, transparent 1px);
+    background-size: 5px 5px;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-paint;
+  }
+}
+
+/* Painted parking-bay line: a short yellow stripe used as a section marker. */
+@utility bay-line {
+  @apply inline-block h-6 w-1.5 -skew-x-12 rounded-[1px] bg-paint;
+}
+
+@utility field-label {
+  @apply mb-1 block font-mono text-[11px] tracking-[0.14em] text-asphalt-300 uppercase;
+}
+
+@utility field-input {
+  @apply w-full rounded-md border border-asphalt-700 bg-asphalt-950 px-3 py-2 text-sm text-sticker placeholder:text-asphalt-500 focus:border-paint focus:outline-none;
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+@utility btn-primary {
+  @apply btn bg-paint text-ink hover:bg-paint-dark;
+}
+
+@utility btn-ghost {
+  @apply btn border border-asphalt-700 text-sticker hover:border-asphalt-500 hover:bg-asphalt-800;
+}
+
+@utility btn-danger {
+  @apply btn bg-stamp text-white hover:bg-[#a50d26];
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

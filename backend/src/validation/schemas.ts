@@ -57,6 +57,7 @@ export const createVehicleSchema = z.object({
   category: requiredText('Category'),
   price,
   quantity: units('Quantity', 0).default(0),
+  imageUrl: z.string().trim().max(500).optional(),
 });
 
 export const updateVehicleSchema = z
@@ -65,6 +66,7 @@ export const updateVehicleSchema = z
     model: requiredText('Model').optional(),
     category: requiredText('Category').optional(),
     price: price.optional(),
+    imageUrl: z.string().trim().max(500).optional(),
     quantity: z.never({ error: 'Stock can only be changed via purchase or restock' }).optional(),
   })
   .refine((changes) => Object.values(changes).some((value) => value !== undefined), {
@@ -88,6 +90,7 @@ export const searchVehiclesSchema = z.object({
   category: optionalTextFilter,
   minPrice: optionalPriceFilter,
   maxPrice: optionalPriceFilter,
+  sortBy: z.enum(['price_asc', 'price_desc', 'make_asc', 'newest']).optional(),
 });
 
 // ---------- Inventory ----------

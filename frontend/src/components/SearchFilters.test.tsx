@@ -33,8 +33,25 @@ describe('SearchFilters', () => {
   it('lists the available categories plus an "All" option', () => {
     setup();
 
-    const options = screen.getAllByRole('option').map((o) => o.textContent);
+    const categorySelect = screen.getByLabelText('Category');
+    const options = Array.from(categorySelect.querySelectorAll('option')).map((o) => o.textContent);
     expect(options).toEqual(['All categories', 'SUV', 'Sedan']);
+  });
+
+  it('submits sortBy when selected', async () => {
+    const { onSearch } = setup();
+
+    await userEvent.selectOptions(screen.getByLabelText('Sort By'), 'price_asc');
+    await userEvent.click(screen.getByRole('button', { name: 'Search' }));
+
+    expect(onSearch).toHaveBeenCalledWith({
+      make: '',
+      model: '',
+      category: '',
+      minPrice: '',
+      maxPrice: '',
+      sortBy: 'price_asc',
+    });
   });
 
   it('blocks a search where min price is above max price', async () => {

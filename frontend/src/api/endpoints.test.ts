@@ -4,6 +4,9 @@ import { fetchCurrentUser, login, register } from './auth';
 import {
   createVehicle,
   deleteVehicle,
+  downloadInventoryCsv,
+  getAllOrders,
+  getMyOrders,
   listVehicles,
   purchaseVehicle,
   restockVehicle,
@@ -102,5 +105,47 @@ describe('vehicle endpoints', () => {
     await restockVehicle('tok', 3, 5);
 
     expect(fetchCall(fetchFn)).toMatchObject({ url: '/api/vehicles/3/restock', method: 'POST', body: { quantity: 5 } });
+  });
+});
+
+describe('order and export endpoints', () => {
+  it('getMyOrders GETs the signed-in user’s orders', async () => {
+    const fetchFn = mockFetch(jsonResponse([]));
+
+    await getMyOrders('tok');
+
+    expect(fetchCall(fetchFn)).toMatchObject({ url: '/api/orders/my', method: 'GET' });
+    expect(fetchCall(fetchFn).headers.get('Authorization')).toBe('Bearer tok');
+  });
+
+  it('getAllOrders GETs the sales ledger', async () => {
+    const fetchFn = mockFetch(jsonResponse({ orders: [], totalRevenue: 0, totalUnitsSold: 0 }));
+
+    await getAllOrders('tok');
+
+    expect(fetchCall(fetchFn).url).toBe('/api/orders');
+  });
+
+  it('downloadInventoryCsv saves the CSV through a temporary link', async () => {
+    const fetchFn = mockFetch(new Response('a,b', { status: 200 }));
+    const createObjectURL = vi.fn(() => 'blob:csv');
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal('URL', class extends URL {
+      static createObjectURL = createObjectURL;
+      static revokeObjectURL = revokeObjectURL;
+    });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    await downloadInventoryCsv('tok');
+
+    expect(fetchCall(fetchFn).headers.get('Authorization')).toBe('Bearer tok');
+    expect(click).toHaveBeenCalled();
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:csv');
+  });
+
+  it('downloadInventoryCsv throws when the server refuses', async () => {
+    mockFetch(new Response('', { status: 403 }));
+
+    await expect(downloadInventoryCsv('tok')).rejects.toThrow('Failed to export inventory CSV');
   });
 });

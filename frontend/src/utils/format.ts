@@ -1,12 +1,12 @@
 import { ApiError } from '../api/client';
 import type { FieldError } from '../types';
 
-const wholeDollars = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
-const withCents = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 });
+const wholeRupees = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
+const withPaise = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 });
 
-/** "$28,400" for whole amounts, "$19,999.50" when there are cents. */
+/** "₹28,400" for whole amounts, "₹19,999.50" when there are paise. */
 export const formatPrice = (price: number): string =>
-  Number.isInteger(price) ? wholeDollars.format(price) : withCents.format(price);
+  Number.isInteger(price) ? wholeRupees.format(price) : withPaise.format(price);
 
 /** Zero-padded stock number shown on the window sticker, e.g. 7 -> "0007". */
 export const formatStockNumber = (id: number): string => String(id).padStart(4, '0');

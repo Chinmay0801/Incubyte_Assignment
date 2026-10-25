@@ -19,14 +19,14 @@ describe('VehicleCard', () => {
     expect(within(card).getByText('Toyota')).toBeInTheDocument();
     expect(within(card).getByText('Camry')).toBeInTheDocument();
     expect(within(card).getByText('Sedan')).toBeInTheDocument();
-    expect(within(card).getByText('$28,400')).toBeInTheDocument();
+    expect(within(card).getByText('₹28,400')).toBeInTheDocument();
     expect(within(card).getByText('3 in stock')).toBeInTheDocument();
   });
 
   it('formats prices with cents when needed', () => {
     render(<VehicleCard vehicle={makeVehicle({ price: 19999.5 })} isAdmin={false} {...handlers()} />);
 
-    expect(screen.getByText('$19,999.50')).toBeInTheDocument();
+    expect(screen.getByText('₹19,999.50')).toBeInTheDocument();
   });
 
   it('calls onPurchase when Purchase is clicked', async () => {

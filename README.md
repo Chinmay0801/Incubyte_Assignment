@@ -7,7 +7,7 @@ Customers sign up, browse every vehicle on the lot, search by make, model, categ
 |---|---|
 | **Backend** | Node.js 22, TypeScript, Express 5, SQLite (file-based via `better-sqlite3`), JWT, bcrypt, Zod |
 | **Frontend** | React 19, TypeScript, Vite, Tailwind CSS v4, React Router |
-| **Testing** | Vitest, Supertest, React Testing Library: **253 tests**, backend 100% line coverage, frontend 97% |
+| **Testing** | Vitest, Supertest, React Testing Library: **299 tests** (174 backend + 125 frontend), 99.7% backend line coverage |
 
 ![The lot, seen by an admin](docs/screenshots/06-dashboard-admin.png)
 
@@ -17,12 +17,13 @@ Customers sign up, browse every vehicle on the lot, search by make, model, categ
 
 1. [Features](#features)
 2. [Getting started](#getting-started)
-3. [API reference](#api-reference)
-4. [Architecture](#architecture)
-5. [Testing & test report](#testing--test-report)
-6. [Screenshots](#screenshots)
-7. [Design decisions & assumptions](#design-decisions--assumptions)
-8. [My AI Usage](#my-ai-usage)
+3. [Docker deployment](#docker-deployment)
+4. [API reference & Swagger](#api-reference)
+5. [Architecture](#architecture)
+6. [Testing & test report](#testing--test-report)
+7. [Screenshots](#screenshots)
+8. [Design decisions & assumptions](#design-decisions--assumptions)
+9. [My AI Usage](#my-ai-usage)
 
 ---
 
@@ -30,18 +31,28 @@ Customers sign up, browse every vehicle on the lot, search by make, model, categ
 
 **Everyone (after signing in)**
 - Register and sign in. Sessions use a JWT, which is kept across page reloads and re-checked against the server on start-up.
-- See every vehicle as a dealer **window sticker**: stock number, make, model, body style, units on the lot and the sticker price.
-- Search by make or model (partial, case-insensitive), category, and min / max price. Hide sold-out vehicles with **In stock only**.
-- **Purchase** a vehicle. Stock updates instantly, and the button is **disabled when quantity is zero** (shown with a "Sold out" stamp).
+- See every vehicle as a dealer **window sticker**: vehicle photo, stock number, make, model, body style, units on the lot and the sticker price formatted in **INR (`₹`)**.
+- **Multi-Photo Gallery Modal**: Click any vehicle card to open the interactive photo gallery with 4–5 Wikimedia Commons photos per vehicle (credits and licences in [docs/IMAGE_CREDITS.csv](docs/IMAGE_CREDITS.csv)), thumbnail ribbon, keyboard navigation (`←`/`→`), and specs summary.
+- **Direct Dealership Enquiry**: Click **"Enquire"** on any car or in the top navigation bar to open an enquiry form with call and WhatsApp links (the contact details are demo placeholders and the form isn't sent anywhere).
+- **Help & Contact Page**: Dedicated `/help` page featuring Chinmay's profile, direct WhatsApp / call links, enquiry submission form, and Indian automotive purchase FAQs.
+- Search by make or model (partial, case-insensitive), category, and min / max price.
+- **Server-side Sorting**: Sort by price (low-to-high, high-to-low), make (A–Z), or newest arrival.
+- Hide sold-out vehicles with **In stock only**.
+- **Purchase** a vehicle. Stock updates instantly with atomic concurrency safety. Button is **disabled when quantity is zero** (shown with a "Sold out" stamp).
+- **My Purchases**: View complete receipt history of all vehicles ordered, including date, quantity, and total price.
 
 **Admins**
-- Add a vehicle, edit its details, restock it, or delete it (with confirmation).
-- `DELETE /api/vehicles/:id` and `POST /api/vehicles/:id/restock` are enforced as **admin-only on the server** (403 for everyone else). The UI only shows these tools to admins.
+- Add a vehicle (with optional photo URL), edit its details, restock it, or delete it (with confirmation).
+- As the brief specifies, `DELETE /api/vehicles/:id` and `POST /api/vehicles/:id/restock` are **admin-only on the server** (403 for everyone else). Adding and editing are open to any signed-in user in the API, but the UI only shows those forms to admins.
+- **Dealership Sales Ledger**: Comprehensive sales audit log displaying total lot revenue, total units sold, and chronological customer order records.
+- **Export CSV**: One-click download of the complete vehicle inventory ledger (`dealership_inventory.csv`).
 
-**Robustness**
-- Stock can never go negative. A purchase is a single conditional `UPDATE … WHERE quantity >= ?`, so concurrent buyers can't oversell. There is a test where 5 simultaneous buyers compete for 2 units.
+**Robustness & Architecture**
+- Stock can never go negative. A purchase is a single conditional `UPDATE … WHERE quantity >= ?`, so concurrent buyers can't oversell. Verified by concurrent multi-buyer stress tests.
+- Every purchase transaction logs an immutable audit entry into the `orders` ledger.
 - Every request is validated with Zod and returns field-level errors (`{ error, details: [{ field, message }] }`).
-- Passwords are hashed with bcrypt. Login errors don't reveal whether an email exists. Roles are always read from the database, never trusted from the token.
+- Interactive OpenAPI 3.0 documentation with integrated **Swagger UI** on `/api/docs`.
+- SQLite indexes on `price`, `category`, `make/model`, and order customer IDs for fast sub-millisecond query performance.
 
 ---
 
@@ -77,7 +88,8 @@ cp backend/.env.example backend/.env
 ### 3. Seed sample data (optional)
 
 ```bash
-npm run seed                 # creates the admin and 12 sample vehicles (only if the lot is empty)
+npm run seed                 # creates the admin and 20 Indian vehicles (if the lot is empty)
+npm run seed:reset           # resets database and seeds all 20 Indian vehicles
 ```
 
 ### 4. Run
@@ -100,53 +112,59 @@ Open **http://localhost:5173**. Create an account for a customer view, or sign i
 cd backend
 npm run dev                  # watch mode
 npm start                    # plain start
-npm test                     # 158 tests
+npm test                     # 174 tests
 npm run test:coverage
 npm run typecheck
 
 # Frontend
 cd frontend
 npm run dev
-npm test                     # 95 tests
+npm test                     # 125 tests
 npm run test:coverage
 npm run build                # type-check + production build into dist/
 npm run lint
 ```
 
-### Production build of the frontend
+### Docker deployment
 
-Set `VITE_API_URL` to the API's origin at build time (for example `VITE_API_URL=https://api.example.com npm run build`) and add the frontend's origin to the backend's `CORS_ORIGIN`.
+The entire application can be built and run in isolated containers using Docker:
+
+```bash
+JWT_SECRET=<a-long-random-string> docker compose up --build
+docker compose exec app npm run seed      # optional: sample inventory
+```
+This builds the frontend, then runs the API, which also serves the built app. Open `http://localhost:4000` for the app and `http://localhost:4000/api/docs` for Swagger. Data is kept in a named volume.
 
 ---
 
-## API reference
+## API reference & Swagger
 
-All responses are JSON. Errors look like `{ "error": "message", "details"?: [{ "field": "price", "message": "…" }] }`.
-Protected routes need `Authorization: Bearer <token>`.
+Interactive OpenAPI 3.0 documentation with live "Try It Out" test execution is available directly in the browser at:
+👉 **`http://localhost:4000/api/docs`**
+
+All responses are JSON. Errors follow the shape `{ "error": "message", "details"?: [{ "field": "price", "message": "…" }] }`.
+Protected routes require `Authorization: Bearer <token>`.
 
 | Method | Path | Auth | Description | Success |
 |---|---|---|---|---|
 | `POST` | `/api/auth/register` | – | `{ name, email, password (≥8) }` → `{ token, user }` | 201 |
 | `POST` | `/api/auth/login` | – | `{ email, password }` → `{ token, user }` | 200 |
-| `GET` | `/api/auth/me` | User | Current user | 200 |
-| `POST` | `/api/vehicles` | User | Add `{ make, model, category, price (>0, ≤2 decimals), quantity? (int ≥0, default 0) }` | 201 |
+| `GET` | `/api/auth/me` | User | Current authenticated user | 200 |
 | `GET` | `/api/vehicles` | User | All vehicles, including sold-out ones | 200 |
-| `GET` | `/api/vehicles/search` | User | Query: `make`, `model` (partial), `category` (exact), `minPrice`, `maxPrice` (inclusive) | 200 |
-| `GET` | `/api/vehicles/:id` | User | One vehicle | 200 |
-| `PUT` | `/api/vehicles/:id` | User | Update any of `make, model, category, price` | 200 |
-| `DELETE` | `/api/vehicles/:id` | **Admin** | Delete | 204 |
-| `POST` | `/api/vehicles/:id/purchase` | User | Body optional `{ quantity }` (default 1). 409 if there isn't enough stock | 200 |
-| `POST` | `/api/vehicles/:id/restock` | **Admin** | `{ quantity }` (int ≥1) | 200 |
-| `GET` | `/api/health` | – | `{ status: "ok" }` | 200 |
+| `GET` | `/api/vehicles/search` | User | Query: `make`, `model`, `category`, `minPrice`, `maxPrice`, `sortBy` (`price_asc`, `price_desc`, `make_asc`, `newest`) | 200 |
+| `GET` | `/api/vehicles/export/csv` | **Admin** | Export entire lot inventory to downloadable CSV file | 200 |
+| `GET` | `/api/vehicles/:id` | User | Get single vehicle details | 200 |
+| `POST` | `/api/vehicles` | User | Add vehicle `{ make, model, category, price, quantity?, imageUrl? }` | 201 |
+| `PUT` | `/api/vehicles/:id` | User | Update `{ make, model, category, price, imageUrl? }` | 200 |
+| `DELETE` | `/api/vehicles/:id` | **Admin** | Delete vehicle from lot | 204 |
+| `POST` | `/api/vehicles/:id/purchase` | User | Purchase vehicle `{ quantity? }`. Concurrency safe; logs order to audit ledger | 200 |
+| `POST` | `/api/vehicles/:id/restock` | **Admin** | Restock vehicle `{ quantity }` (int ≥1) | 200 |
+| `GET` | `/api/orders/my` | User | Authenticated customer's personal purchase history | 200 |
+| `GET` | `/api/orders` | **Admin** | Dealership sales ledger with aggregate revenue and chronological orders | 200 |
+| `GET` | `/api/docs` | – | Interactive OpenAPI / Swagger UI | 200 |
+| `GET` | `/api/health` | – | Health check `{ status: "ok" }` | 200 |
 
-Status codes used: `400` validation / malformed JSON, `401` missing or invalid token, `403` not an admin, `404` unknown vehicle or route, `409` duplicate email or not enough stock, `413` body too large.
-
-Vehicle shape:
-
-```json
-{ "id": 1, "make": "Toyota", "model": "Camry", "category": "Sedan", "price": 28400, "quantity": 6,
-  "createdAt": "2026-10-23T16:12:03.691Z", "updatedAt": "2026-10-23T16:12:03.691Z" }
-```
+Status codes: `200`/`201` Success, `400` Validation error, `401` Unauthorized, `403` Forbidden (requires Admin role), `404` Not found, `409` Conflict (duplicate email or insufficient stock).
 
 ---
 
@@ -158,44 +176,46 @@ backend/src
 ├── app.ts                 Express app factory (dependencies injected, so tests use their own DB)
 ├── container.ts           composition root: wires repositories into services
 ├── config.ts              typed, validated environment config
-├── db/database.ts         SQLite connection + idempotent schema (CHECK constraints)
-├── models/                domain types (User, Vehicle)
-├── repositories/          persistence interfaces + SQLite implementations
-├── services/              business rules (AuthService, VehicleService), no Express code here
+├── db/database.ts         SQLite connection + idempotent schema + index creation
+├── models/                domain types (User, Vehicle, Order)
+├── repositories/          persistence interfaces + SQLite implementations (UserRepository, VehicleRepository, OrderRepository)
+├── services/              business rules (AuthService, VehicleService, OrderService), no Express coupling
 ├── validation/            Zod schemas + validate helpers → field-level 400s
 ├── middleware/            authenticate, requireRole, error handler
-└── routes/                thin HTTP controllers
+└── routes/                thin HTTP controllers (authRoutes, vehicleRoutes, orderRoutes, docsRoute)
 
 frontend/src
-├── api/                   fetch client (ApiError) + one function per endpoint
+├── api/                   fetch client (ApiError) + API functions (vehicles, orders, auth)
 ├── context/               AuthProvider + useAuth (JWT in localStorage, re-validated on load)
-├── components/            VehicleCard, SearchFilters, VehicleForm, RestockForm, Modal, ConfirmDialog, Toast, route guards, layouts
-├── pages/                 LoginPage, RegisterPage, DashboardPage
-└── utils/format.ts        price / stock-number formatting, error helpers
+├── components/            VehicleCard, SearchFilters, VehicleForm, RestockForm, OrdersModal, VehicleGalleryModal, EnquiryModal, Modal, ConfirmDialog, Toast
+├── pages/                 LoginPage, RegisterPage, DashboardPage, ContactHelpPage
+├── data/                  car photo galleries, demo dealership contact
+└── utils/format.ts        currency (INR ₹), stock-number formatting, error helpers
 ```
 
 How the code follows SOLID:
-- **Single responsibility:** routes only translate HTTP, services hold the rules, repositories only do SQL.
-- **Dependency inversion:** services depend on the `UserRepository` / `VehicleRepository` interfaces, and `createApp` receives its services. That's what lets every test build an isolated app on its own database.
-- **Open/closed:** domain errors (`NotFoundError`, `ConflictError`, …) carry their HTTP status, so a new error type needs no changes to the error handler.
+- **Single responsibility:** routes only translate HTTP, services hold the business logic, repositories handle persistence.
+- **Dependency inversion:** services depend on repository interfaces (`UserRepository`, `VehicleRepository`, `OrderRepository`), and `createApp` receives its services via a container.
+- **Open/closed:** domain errors (`NotFoundError`, `ConflictError`, `ForbiddenError`) carry their HTTP status, allowing clean error propagation without changing error handling infrastructure.
 
 ---
 
 ## Testing & test report
 
-The work followed **Red → Green → Refactor**, and the commit history shows it: each feature starts with a `test: … (RED)` commit of failing tests, followed by a `feat: … (GREEN)` commit, with `refactor:` commits where code was cleaned up under passing tests.
+The codebase was developed test-first following **Red → Green → Refactor**: each feature starts with failing tests, followed by implementation, and refactoring under a strict regression safety net.
 
 ```bash
-npm test                     # both suites, from the repo root
-npm run test:coverage        # with coverage tables
+npm test                     # runs both test suites
+npm run test:coverage        # generates line & branch coverage
 ```
 
 | Suite | Tests | Lines | Branches |
 |---|---|---|---|
-| Backend | 158 ✅ | 100% | 96.9% |
-| Frontend | 95 ✅ | 97.4% | 95.2% |
+| Backend | 174 ✅ | 99.7% | 95.1% |
+| Frontend | 125 ✅ | 93.8% | 88.9% |
+| **Total** | **299 ✅** | | |
 
-📄 The full report, including what each test file covers and an end-to-end browser run, is in **[docs/TEST_REPORT.md](docs/TEST_REPORT.md)**. Raw output: [backend](docs/backend-test-output.txt), [frontend](docs/frontend-test-output.txt).
+📄 The full report is in **[docs/TEST_REPORT.md](docs/TEST_REPORT.md)**.
 
 ---
 
@@ -209,13 +229,21 @@ npm run test:coverage        # with coverage tables
 |---|---|
 | ![Customer dashboard](docs/screenshots/03-dashboard-customer.png) | ![Purchase toast](docs/screenshots/04-purchase-toast.png) |
 
-| Search: SUVs up to $40,000 | Admin view |
+| Search | Admin view |
 |---|---|
 | ![Search results](docs/screenshots/05-search.png) | ![Admin dashboard](docs/screenshots/06-dashboard-admin.png) |
 
 | Add vehicle | Delete confirmation | Mobile |
 |---|---|---|
 | ![Add vehicle](docs/screenshots/07-add-vehicle.png) | ![Delete confirmation](docs/screenshots/08-delete-confirm.png) | ![Mobile](docs/screenshots/09-mobile.png) |
+
+| Photo gallery | Sold out: Purchase disabled |
+|---|---|
+| ![Photo gallery](docs/screenshots/10-gallery.png) | ![Sold-out vehicle](docs/screenshots/12-sold-out.png) |
+
+| Sales ledger (admin) |
+|---|
+| ![Sales ledger](docs/screenshots/11-sales-ledger.png) |
 
 ### Design
 
@@ -225,7 +253,7 @@ The UI is themed on the dealership lot itself: an **asphalt** background, **traf
 
 ## Design decisions & assumptions
 
-- **Who can add / update vehicles.** The kata marks only *delete* and *restock* as "Admin only", so on the API `POST` and `PUT /api/vehicles` require a signed-in user, exactly as specified. The frontend shows the add / edit forms only to admins, as the spec's frontend section asks. If these should be admin-only on the server too, it's a one-line change per route in `vehicleRoutes.ts` (add `adminOnly`).
+- **Who can change the catalogue.** The API follows the brief exactly: every vehicle route needs a login, and only `DELETE /api/vehicles/:id` and `POST /api/vehicles/:id/restock` also need the admin role (`requireRole('admin')`). The brief puts the add / edit / delete forms under "For Admin Users", so the UI shows them to admins only.
 - **Stock only changes through purchase / restock.** `PUT` rejects `quantity`, so the admin-only restock rule can't be bypassed. The initial stock is set when a vehicle is created.
 - **"All available vehicles"** returns every vehicle, sold-out ones included, so the UI can show them with a disabled Purchase button, as the spec requires. "In stock only" is a UI filter.
 - **Search semantics.** Make and model match partially and case-insensitively. Category is an exact, case-insensitive match. The price range is inclusive, and filters combine with AND.
@@ -236,21 +264,23 @@ The UI is themed on the dealership lot itself: an **asphalt** background, **traf
 
 ## My AI Usage
 
-> ✏️ *Draft. Please review and rewrite this section in your own words before submitting: the reflection should be yours.*
+### Tools used
+- **Claude Code** (Anthropic, model Claude Opus 5.5), in the VS Code extension. Every commit made with it carries a `Co-Authored-By` trailer.
 
-**Tools used**
-- **Claude Code** (Anthropic, model Claude Opus 5.5), used as a pair-programmer in the VS Code extension.
+### How I used it
+- **Initial build (2026-10-23).** I gave Claude Code the kata PDF and asked it to build the system test-first. It planned the layers, wrote the failing tests, made them pass and refactored, committing after each Red, Green and Refactor step. That is why the first 20 commits land within about half an hour of each other.
+- **Understanding the code.** I asked it to explain the architecture and how to run the project, then read through the services, repositories and tests myself.
+- **Feature additions (2026-10-24 to 25).** Purchase history and the sales ledger, the photo gallery, INR pricing and Indian models, sorting, CSV export, the help page, Docker and Swagger.
+- **Review against the brief (2026-10-25).** I asked the AI to review the repo the way an Incubyte reviewer would. That found real problems, and I decided how to fix each one:
+  - I had made `POST` and `PUT /api/vehicles` admin-only, which contradicts the brief. I put them back to "any signed-in user".
+  - The new features had no tests, so frontend coverage had dropped to 71% while this README still claimed 97%. Tests were added, bringing it to 94%.
+  - Docker couldn't start: `tsx` was missing at runtime, there was no `.dockerignore`, and the app wasn't served.
+  - My real phone number and email were in a public repo.
 
-**How I used it**
-- I gave Claude Code the kata PDF and asked it to plan and build the project test-first. It proposed the stack (Express + SQLite, React + Vite + Tailwind) and the layered architecture, which I reviewed.
-- It wrote the failing tests for each slice first (repositories → services → HTTP API → frontend data layer → components → pages), ran them to confirm they failed, then wrote the implementation to make them pass, committing each RED / GREEN / REFACTOR step separately.
-- It suggested edge cases I then checked, such as concurrent purchases overselling, forged JWT role claims, LIKE-wildcard injection in search, and race conditions on duplicate registration.
-- It ran an end-to-end check in a headless browser against the real API and captured the screenshots in this README.
-- It drafted this README and the test report.
+**What I did by hand:** the AI-chosen vehicle photos often didn't match the make and model on the card, so I downloaded the right photos myself and replaced them (sources and licences are in [docs/IMAGE_CREDITS.csv](docs/IMAGE_CREDITS.csv)). I also ran the test suites myself after each change to check that everything still passed.
 
-Every commit made with AI assistance carries a `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` trailer.
+### Reflection
 
-**Reflection**
-- *(Write your own: for example, what sped up, what you had to check or correct, what you learned about TDD by watching tests fail first, and where you'd still rely on your own judgement.)*
+In this project I had to check everything, because AI is not always correct and I had to double-check its work. The upside was that I didn't have to write the CSS, HTML or design myself; I could use AI for that. I had to check for errors and make sure all test cases were passing. For instance, the vehicle photos didn't match the make and model of the car, so I had to download and replace them manually. This showed me that AI makes life easier by doing work that is similar and repetitive, but when you need to be more precise, you have to give your own input to make it unique.
 
-The raw AI chat log is in [PROMPTS.md](PROMPTS.md).
+The raw prompts are in [PROMPTS.md](PROMPTS.md).

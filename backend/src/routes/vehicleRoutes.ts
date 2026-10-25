@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authenticate, requireRole } from '../middleware/auth';
 import type { AuthService } from '../services/authService';
+import type { OrderService } from '../services/orderService';
 import type { VehicleService } from '../services/vehicleService';
 import {
   createVehicleSchema,
@@ -13,7 +14,7 @@ import {
 import { validate, validateBody } from '../validation/validate';
 
 /** Vehicle catalogue + inventory endpoints. Every route requires authentication. */
-export function createVehicleRouter(vehicles: VehicleService, auth: AuthService): Router {
+export function createVehicleRouter(vehicles: VehicleService, auth: AuthService, orders?: OrderService): Router {
   const router = Router();
   const adminOnly = requireRole('admin');
   const parseId = (params: unknown) => validate(vehicleParamsSchema, params).id;
@@ -27,6 +28,26 @@ export function createVehicleRouter(vehicles: VehicleService, auth: AuthService)
 
   router.get('/', (_req, res) => {
     res.json(vehicles.list());
+  });
+
+  // Export CSV of lot inventory (Admin only). Placed before "/:id"
+  router.get('/export/csv', adminOnly, (_req, res) => {
+    const list = vehicles.list();
+    const headers = ['Stock ID', 'Make', 'Model', 'Category', 'Price (INR)', 'Stock', 'Status'];
+    const rows = list.map((v) => [
+      v.id,
+      `"${v.make.replace(/"/g, '""')}"`,
+      `"${v.model.replace(/"/g, '""')}"`,
+      `"${v.category.replace(/"/g, '""')}"`,
+      v.price,
+      v.quantity,
+      v.quantity > 0 ? 'In Stock' : 'Sold Out',
+    ]);
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="dealership_inventory.csv"');
+    res.status(200).send(csvContent);
   });
 
   // Must be registered before "/:id" so "search" is not treated as an id.
@@ -53,7 +74,18 @@ export function createVehicleRouter(vehicles: VehicleService, auth: AuthService)
   router.post('/:id/purchase', (req, res) => {
     const id = parseId(req.params);
     const { quantity } = validateBody(purchaseSchema, req);
-    res.json(vehicles.purchase(id, quantity));
+    const updated = vehicles.purchase(id, quantity);
+
+    if (orders && req.user) {
+      orders.recordPurchase({
+        userId: req.user.id,
+        vehicleId: id,
+        quantity: quantity ?? 1,
+        unitPrice: updated.price,
+      });
+    }
+
+    res.json(updated);
   });
 
   router.post('/:id/restock', adminOnly, (req, res) => {

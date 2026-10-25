@@ -2,19 +2,28 @@ import { ConflictError, NotFoundError, ValidationError } from '../errors';
 import type { NewVehicle, Vehicle, VehicleSearchFilters, VehicleUpdate } from '../models/vehicle';
 import type { VehicleRepository } from '../repositories/vehicleRepository';
 
-const trimText = <T extends Partial<Record<'make' | 'model' | 'category', string>>>(input: T): T => ({
-  ...input,
-  ...(input.make !== undefined && { make: input.make.trim() }),
-  ...(input.model !== undefined && { model: input.model.trim() }),
-  ...(input.category !== undefined && { category: input.category.trim() }),
-});
+interface TextFields {
+  make?: string;
+  model?: string;
+  category?: string;
+}
+
+/** Trims whitespace from string fields if present. */
+function trimVehicleFields<T extends TextFields>(input: T): T {
+  return {
+    ...input,
+    ...(input.make !== undefined && { make: input.make.trim() }),
+    ...(input.model !== undefined && { model: input.model.trim() }),
+    ...(input.category !== undefined && { category: input.category.trim() }),
+  };
+}
 
 /** Business rules for the vehicle catalogue and its inventory. */
 export class VehicleService {
   constructor(private readonly vehicles: VehicleRepository) {}
 
   create(input: NewVehicle): Vehicle {
-    return this.vehicles.create(trimText(input));
+    return this.vehicles.create(trimVehicleFields(input));
   }
 
   list(): Vehicle[] {
@@ -26,7 +35,7 @@ export class VehicleService {
     if (minPrice !== undefined && maxPrice !== undefined && minPrice > maxPrice) {
       throw new ValidationError('minPrice cannot be greater than maxPrice');
     }
-    return this.vehicles.search(trimText(filters));
+    return this.vehicles.search(trimVehicleFields(filters));
   }
 
   getById(id: number): Vehicle {
@@ -38,7 +47,7 @@ export class VehicleService {
   }
 
   update(id: number, changes: VehicleUpdate): Vehicle {
-    const updated = this.vehicles.update(id, trimText(changes));
+    const updated = this.vehicles.update(id, trimVehicleFields(changes));
     if (!updated) {
       throw new NotFoundError(`Vehicle ${id} not found`);
     }

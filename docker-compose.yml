@@ -1,0 +1,24 @@
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lotline-dealership
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - DATABASE_PATH=/app/backend/data/dealership.db
+      - JWT_SECRET=${JWT_SECRET:-change-me-before-deploying}
+      - JWT_EXPIRES_IN=1d
+      - CORS_ORIGIN=http://localhost:5173,http://localhost:4000
+      - ADMIN_EMAIL=admin@dealership.com
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-Admin@123}
+    volumes:
+      - dealership_data:/app/backend/data
+    restart: unless-stopped
+
+volumes:
+  dealership_data:

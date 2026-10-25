@@ -1,4 +1,4 @@
-import type { Vehicle, VehicleFilters, VehicleInput, VehicleUpdate } from '../types';
+import type { Order, OrderSummary, Vehicle, VehicleFilters, VehicleInput, VehicleUpdate } from '../types';
 import { apiRequest } from './client';
 
 export const listVehicles = (token: string) => apiRequest<Vehicle[]>('/api/vehicles', { token });
@@ -27,3 +27,23 @@ export const purchaseVehicle = (token: string, id: number, quantity = 1) =>
 
 export const restockVehicle = (token: string, id: number, quantity: number) =>
   apiRequest<Vehicle>(`/api/vehicles/${id}/restock`, { method: 'POST', body: { quantity }, token });
+
+export const getMyOrders = (token: string) => apiRequest<Order[]>('/api/orders/my', { token });
+
+export const getAllOrders = (token: string) => apiRequest<OrderSummary>('/api/orders', { token });
+
+export const downloadInventoryCsv = async (token: string): Promise<void> => {
+  const res = await fetch('/api/vehicles/export/csv', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error('Failed to export inventory CSV');
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'dealership_inventory.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
+};

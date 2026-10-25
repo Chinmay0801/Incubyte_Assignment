@@ -22,6 +22,7 @@ interface VehicleRow {
   category: string;
   price: number;
   quantity: number;
+  image_url?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -33,6 +34,7 @@ const toVehicle = (row: VehicleRow): Vehicle => ({
   category: row.category,
   price: row.price,
   quantity: row.quantity,
+  ...(row.image_url ? { imageUrl: row.image_url } : {}),
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
@@ -48,6 +50,7 @@ const UPDATABLE_COLUMNS: Record<keyof VehicleUpdate, string> = {
   model: 'model',
   category: 'category',
   price: 'price',
+  imageUrl: 'image_url',
 };
 
 export class SqliteVehicleRepository implements VehicleRepository {
@@ -55,8 +58,8 @@ export class SqliteVehicleRepository implements VehicleRepository {
 
   create(vehicle: NewVehicle): Vehicle {
     const { lastInsertRowid } = this.db
-      .prepare('INSERT INTO vehicles (make, model, category, price, quantity) VALUES (?, ?, ?, ?, ?)')
-      .run(vehicle.make, vehicle.model, vehicle.category, vehicle.price, vehicle.quantity);
+      .prepare('INSERT INTO vehicles (make, model, category, price, quantity, image_url) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(vehicle.make, vehicle.model, vehicle.category, vehicle.price, vehicle.quantity, vehicle.imageUrl ?? null);
     return this.findById(Number(lastInsertRowid))!;
   }
 
@@ -94,8 +97,19 @@ export class SqliteVehicleRepository implements VehicleRepository {
       params.push(filters.maxPrice);
     }
 
+    let orderClause = 'ORDER BY id';
+    if (filters.sortBy === 'price_asc') {
+      orderClause = 'ORDER BY price ASC, id ASC';
+    } else if (filters.sortBy === 'price_desc') {
+      orderClause = 'ORDER BY price DESC, id ASC';
+    } else if (filters.sortBy === 'make_asc') {
+      orderClause = 'ORDER BY make ASC, model ASC, id ASC';
+    } else if (filters.sortBy === 'newest') {
+      orderClause = 'ORDER BY id DESC';
+    }
+
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const rows = this.db.prepare(`SELECT * FROM vehicles ${where} ORDER BY id`).all(...params) as VehicleRow[];
+    const rows = this.db.prepare(`SELECT * FROM vehicles ${where} ${orderClause}`).all(...params) as VehicleRow[];
     return rows.map(toVehicle);
   }
 

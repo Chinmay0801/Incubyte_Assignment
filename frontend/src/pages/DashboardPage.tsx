@@ -2,12 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import * as vehiclesApi from '../api/vehicles';
 import { ApiError } from '../api/client';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { EnquiryModal } from '../components/EnquiryModal';
 import { Modal } from '../components/Modal';
+import { OrdersModal } from '../components/OrdersModal';
 import { RestockForm } from '../components/RestockForm';
 import { SearchFilters } from '../components/SearchFilters';
 import { Toast, type ToastMessage } from '../components/Toast';
 import { VehicleCard } from '../components/VehicleCard';
 import { VehicleForm } from '../components/VehicleForm';
+import { VehicleGalleryModal } from '../components/VehicleGalleryModal';
 import { useAuth } from '../context/useAuth';
 import type { Vehicle, VehicleFilters, VehicleInput, VehicleUpdate } from '../types';
 import { errorMessage, formatStockNumber } from '../utils/format';
@@ -16,7 +19,10 @@ type Dialog =
   | { kind: 'add' }
   | { kind: 'edit'; vehicle: Vehicle }
   | { kind: 'restock'; vehicle: Vehicle }
-  | { kind: 'delete'; vehicle: Vehicle };
+  | { kind: 'delete'; vehicle: Vehicle }
+  | { kind: 'orders' }
+  | { kind: 'gallery'; vehicle: Vehicle }
+  | { kind: 'enquiry'; vehicle?: Vehicle };
 
 const nameOf = (vehicle: Vehicle) => `${vehicle.make} ${vehicle.model}`;
 const plural = (count: number, singular: string, pluralForm = `${singular}s`) => `${count} ${count === 1 ? singular : pluralForm}`;
@@ -167,11 +173,44 @@ export function DashboardPage() {
           </h1>
           {status === 'ready' && <p className="mt-2 font-mono text-xs tracking-[0.12em] text-asphalt-300 uppercase">{summary}</p>}
         </div>
-        {isAdmin && (
-          <button type="button" className="btn-primary" onClick={() => setDialog({ kind: 'add' })}>
-            Add vehicle
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className="btn-ghost text-xs uppercase tracking-wider text-paint border-paint/40 hover:bg-paint/10"
+            onClick={() => setDialog({ kind: 'enquiry' })}
+            title="Enquire with Chinmay (+91 90000 00000)"
+          >
+            💬 Enquire
           </button>
-        )}
+          <button
+            type="button"
+            className="btn-ghost text-xs uppercase tracking-wider"
+            onClick={() => setDialog({ kind: 'orders' })}
+          >
+            {isAdmin ? 'Sales Ledger' : 'My Purchases'}
+          </button>
+          {isAdmin && (
+            <>
+              <button
+                type="button"
+                className="btn-ghost text-xs uppercase tracking-wider"
+                onClick={async () => {
+                  try {
+                    await vehiclesApi.downloadInventoryCsv(token!);
+                    notify('success', 'Downloaded inventory CSV.');
+                  } catch (err) {
+                    notify('error', errorMessage(err));
+                  }
+                }}
+              >
+                Export CSV
+              </button>
+              <button type="button" className="btn-primary" onClick={() => setDialog({ kind: 'add' })}>
+                Add vehicle
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="mt-6">
@@ -219,6 +258,8 @@ export function DashboardPage() {
                   onEdit={(v) => setDialog({ kind: 'edit', vehicle: v })}
                   onRestock={(v) => setDialog({ kind: 'restock', vehicle: v })}
                   onDelete={(v) => setDialog({ kind: 'delete', vehicle: v })}
+                  onViewGallery={(v) => setDialog({ kind: 'gallery', vehicle: v })}
+                  onEnquire={(v) => setDialog({ kind: 'enquiry', vehicle: v })}
                 />
               </li>
             ))}
@@ -248,6 +289,28 @@ export function DashboardPage() {
           confirmLabel="Delete vehicle"
           onConfirm={handleDelete(dialog.vehicle)}
           onCancel={() => setDialog(null)}
+        />
+      )}
+      {dialog?.kind === 'orders' && (
+        <OrdersModal token={token!} isAdmin={isAdmin} onClose={() => setDialog(null)} />
+      )}
+      {dialog?.kind === 'gallery' && (
+        <VehicleGalleryModal
+          vehicle={dialog.vehicle}
+          onClose={() => setDialog(null)}
+          onPurchase={(v) => {
+            setDialog(null);
+            handlePurchase(v);
+          }}
+          onEnquire={(v) => setDialog({ kind: 'enquiry', vehicle: v })}
+          isPurchasing={purchasingId === dialog.vehicle.id}
+        />
+      )}
+      {dialog?.kind === 'enquiry' && (
+        <EnquiryModal
+          vehicle={dialog.vehicle}
+          onClose={() => setDialog(null)}
+          onSuccess={(msg) => notify('success', msg)}
         />
       )}
 

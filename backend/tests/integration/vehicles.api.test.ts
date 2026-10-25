@@ -127,6 +127,28 @@ describe('Vehicles API', () => {
     });
   });
 
+  describe('GET /api/vehicles/export/csv (admin only)', () => {
+    it('returns 403 for a regular user', async () => {
+      const res = await request(ctx.app).get('/api/vehicles/export/csv').set(asUser());
+
+      expect(res.status).toBe(403);
+    });
+
+    it('downloads the inventory as CSV, quoting text fields', async () => {
+      await createVehicle({ make: 'Tata "Motors"', model: 'Nexon', category: 'SUV', price: 800000, quantity: 0 });
+
+      const res = await request(ctx.app).get('/api/vehicles/export/csv').set(asAdmin());
+
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toContain('text/csv');
+      expect(res.headers['content-disposition']).toContain('dealership_inventory.csv');
+      expect(res.text.split('\r\n')).toEqual([
+        'Stock ID,Make,Model,Category,Price (INR),Stock,Status',
+        expect.stringMatching(/^\d+,"Tata ""Motors""","Nexon","SUV",800000,0,Sold Out$/),
+      ]);
+    });
+  });
+
   describe('GET /api/vehicles/search', () => {
     beforeEach(async () => {
       await createVehicle({ make: 'Toyota', model: 'Corolla', category: 'Sedan', price: 21000, quantity: 4 });
@@ -138,6 +160,23 @@ describe('Vehicles API', () => {
       request(ctx.app).get('/api/vehicles/search').query(query).set(asUser());
 
     const models = (body: { model: string }[]) => body.map((v) => v.model);
+
+    it.each([
+      ['price_asc', ['Corolla', 'RAV4', 'F-150']],
+      ['price_desc', ['F-150', 'RAV4', 'Corolla']],
+      ['make_asc', ['F-150', 'Corolla', 'RAV4']],
+      ['newest', ['F-150', 'RAV4', 'Corolla']],
+    ])('sorts by %s', async (sortBy, expected) => {
+      const res = await search({ sortBy });
+
+      expect(models(res.body)).toEqual(expected);
+    });
+
+    it('returns 400 for an unknown sort order', async () => {
+      const res = await search({ sortBy: 'colour' });
+
+      expect(res.status).toBe(400);
+    });
 
     it('searches by make', async () => {
       const res = await search({ make: 'toyota' });

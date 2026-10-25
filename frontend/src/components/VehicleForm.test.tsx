@@ -9,7 +9,7 @@ const fillNewVehicle = async () => {
   await userEvent.type(screen.getByLabelText('Make'), 'Kia');
   await userEvent.type(screen.getByLabelText('Model'), 'EV6');
   await userEvent.type(screen.getByLabelText('Category'), 'Electric');
-  await userEvent.type(screen.getByLabelText('Price (USD)'), '42600');
+  await userEvent.type(screen.getByLabelText('Price (₹)'), '42600');
   await userEvent.clear(screen.getByLabelText('Units in stock'));
   await userEvent.type(screen.getByLabelText('Units in stock'), '2');
 };
@@ -30,14 +30,14 @@ describe('VehicleForm', () => {
       const onSubmit = vi.fn();
       render(<VehicleForm onSubmit={onSubmit} onCancel={vi.fn()} />);
 
-      await userEvent.type(screen.getByLabelText('Price (USD)'), '0');
+      await userEvent.type(screen.getByLabelText('Price (₹)'), '0');
       await userEvent.click(screen.getByRole('button', { name: 'Add vehicle' }));
 
       expect(onSubmit).not.toHaveBeenCalled();
       expect(screen.getByText('Enter the make')).toBeInTheDocument();
       expect(screen.getByText('Enter the model')).toBeInTheDocument();
       expect(screen.getByText('Enter a category')).toBeInTheDocument();
-      expect(screen.getByText('Price must be more than $0')).toBeInTheDocument();
+      expect(screen.getByText('Price must be more than ₹0')).toBeInTheDocument();
     });
 
     it('rejects a fractional or negative stock count', async () => {
@@ -90,7 +90,7 @@ describe('VehicleForm', () => {
       render(<VehicleForm vehicle={makeVehicle()} onSubmit={vi.fn()} onCancel={vi.fn()} />);
 
       expect(screen.getByLabelText('Make')).toHaveValue('Toyota');
-      expect(screen.getByLabelText('Price (USD)')).toHaveValue(28400);
+      expect(screen.getByLabelText('Price (₹)')).toHaveValue(28400);
       expect(screen.queryByLabelText('Units in stock')).not.toBeInTheDocument();
     });
 
@@ -98,8 +98,8 @@ describe('VehicleForm', () => {
       const onSubmit = vi.fn().mockResolvedValue(undefined);
       render(<VehicleForm vehicle={makeVehicle()} onSubmit={onSubmit} onCancel={vi.fn()} />);
 
-      await userEvent.clear(screen.getByLabelText('Price (USD)'));
-      await userEvent.type(screen.getByLabelText('Price (USD)'), '27000');
+      await userEvent.clear(screen.getByLabelText('Price (₹)'));
+      await userEvent.type(screen.getByLabelText('Price (₹)'), '27000');
       await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
 
       expect(onSubmit).toHaveBeenCalledWith({ make: 'Toyota', model: 'Camry', category: 'Sedan', price: 27000 });

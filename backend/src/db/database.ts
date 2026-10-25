@@ -23,9 +23,28 @@ const SCHEMA = `
     category   TEXT    NOT NULL,
     price      REAL    NOT NULL CHECK (price >= 0),
     quantity   INTEGER NOT NULL DEFAULT 0 CHECK (quantity >= 0),
+    image_url  TEXT,
     created_at TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
     updated_at TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   );
+
+  CREATE TABLE IF NOT EXISTS orders (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id      INTEGER NOT NULL,
+    vehicle_id   INTEGER NOT NULL,
+    quantity     INTEGER NOT NULL CHECK (quantity > 0),
+    unit_price   REAL    NOT NULL CHECK (unit_price >= 0),
+    total_price  REAL    NOT NULL CHECK (total_price >= 0),
+    purchased_at TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE RESTRICT
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_vehicles_price ON vehicles(price);
+  CREATE INDEX IF NOT EXISTS idx_vehicles_category ON vehicles(category);
+  CREATE INDEX IF NOT EXISTS idx_vehicles_make_model ON vehicles(make, model);
+  CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
+  CREATE INDEX IF NOT EXISTS idx_orders_purchased_at ON orders(purchased_at);
 `;
 
 /**
@@ -43,5 +62,13 @@ export function createDatabase(filePath: string): Database.Database {
     db.pragma('journal_mode = WAL');
   }
   db.exec(SCHEMA);
+
+  // Non-destructive column addition for existing databases
+  try {
+    db.exec('ALTER TABLE vehicles ADD COLUMN image_url TEXT');
+  } catch {
+    // Column already exists
+  }
+
   return db;
 }

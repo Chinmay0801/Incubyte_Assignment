@@ -11,7 +11,7 @@ interface VehicleFormProps {
   onCancel: () => void;
 }
 
-type Field = 'make' | 'model' | 'category' | 'price' | 'quantity';
+type Field = 'make' | 'model' | 'category' | 'price' | 'quantity' | 'imageUrl';
 type Values = Record<Field, string>;
 
 const validate = (values: Values, isEdit: boolean): Partial<Record<Field, string>> => {
@@ -21,7 +21,7 @@ const validate = (values: Values, isEdit: boolean): Partial<Record<Field, string
   if (!values.category.trim()) errors.category = 'Enter a category';
 
   const price = Number(values.price);
-  if (!values.price.trim() || !Number.isFinite(price) || price <= 0) errors.price = 'Price must be more than $0';
+  if (!values.price.trim() || !Number.isFinite(price) || price <= 0) errors.price = 'Price must be more than ₹0';
 
   const quantity = Number(values.quantity);
   if (!isEdit && (!values.quantity.trim() || !Number.isInteger(quantity) || quantity < 0)) {
@@ -39,6 +39,7 @@ export function VehicleForm({ vehicle, categories = [], onSubmit, onCancel }: Ve
     category: vehicle?.category ?? '',
     price: vehicle ? String(vehicle.price) : '',
     quantity: '1',
+    imageUrl: vehicle?.imageUrl ?? '',
   });
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -51,11 +52,13 @@ export function VehicleForm({ vehicle, categories = [], onSubmit, onCancel }: Ve
     setFormError(null);
     if (Object.keys(clientErrors).length > 0) return;
 
+    const imageUrl = values.imageUrl.trim() || undefined;
     const base = {
       make: values.make.trim(),
       model: values.model.trim(),
       category: values.category.trim(),
       price: Number(values.price),
+      ...(imageUrl ? { imageUrl } : {}),
     };
     setIsSaving(true);
     try {
@@ -107,9 +110,10 @@ export function VehicleForm({ vehicle, categories = [], onSubmit, onCancel }: Ve
         ))}
       </datalist>
       <div className={isEdit ? '' : 'grid grid-cols-2 gap-3'}>
-        {field('price', 'Price (USD)', { type: 'number', min: '0', step: '0.01', inputMode: 'decimal', placeholder: '28400' })}
+        {field('price', 'Price (₹)', { type: 'number', min: '0', step: '0.01', inputMode: 'decimal', placeholder: '650000' })}
         {!isEdit && field('quantity', 'Units in stock', { type: 'number', min: '0', step: '1', inputMode: 'numeric' })}
       </div>
+      {field('imageUrl', 'Photo URL (optional)', { placeholder: 'https://...', autoComplete: 'off' })}
 
       {formError && (
         <p role="alert" className="text-sm text-paint">

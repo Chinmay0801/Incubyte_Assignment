@@ -196,7 +196,7 @@ describe('DashboardPage', () => {
       await userEvent.type(within(dialog).getByLabelText('Make'), 'Kia');
       await userEvent.type(within(dialog).getByLabelText('Model'), 'EV6');
       await userEvent.type(within(dialog).getByLabelText('Category'), 'Electric');
-      await userEvent.type(within(dialog).getByLabelText('Price (USD)'), '42600');
+      await userEvent.type(within(dialog).getByLabelText('Price (₹)'), '42600');
       await userEvent.clear(within(dialog).getByLabelText('Units in stock'));
       await userEvent.type(within(dialog).getByLabelText('Units in stock'), '2');
       await userEvent.click(within(dialog).getByRole('button', { name: 'Add vehicle' }));
@@ -214,12 +214,12 @@ describe('DashboardPage', () => {
 
       await userEvent.click(within(card('Toyota Camry')).getByRole('button', { name: /edit/i }));
       const dialog = screen.getByRole('dialog', { name: 'Edit vehicle' });
-      await userEvent.clear(within(dialog).getByLabelText('Price (USD)'));
-      await userEvent.type(within(dialog).getByLabelText('Price (USD)'), '27000');
+      await userEvent.clear(within(dialog).getByLabelText('Price (₹)'));
+      await userEvent.type(within(dialog).getByLabelText('Price (₹)'), '27000');
       await userEvent.click(within(dialog).getByRole('button', { name: 'Save changes' }));
 
       expect(api.updateVehicle).toHaveBeenCalledWith('token-2', 1, { make: 'Toyota', model: 'Camry', category: 'Sedan', price: 27000 });
-      expect(await within(card('Toyota Camry')).findByText('$27,000')).toBeInTheDocument();
+      expect(await within(card('Toyota Camry')).findByText('₹27,000')).toBeInTheDocument();
     });
 
     it('restocks a vehicle', async () => {

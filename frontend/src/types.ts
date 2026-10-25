@@ -19,6 +19,7 @@ export interface Vehicle {
   category: string;
   price: number;
   quantity: number;
+  imageUrl?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -30,6 +31,7 @@ export interface VehicleInput {
   category: string;
   price: number;
   quantity: number;
+  imageUrl?: string;
 }
 
 /** Fields that can be edited after creation (stock changes go through purchase / restock). */
@@ -41,6 +43,28 @@ export interface VehicleFilters {
   category?: string;
   minPrice?: string;
   maxPrice?: string;
+  sortBy?: string;
+}
+
+export interface Order {
+  id: number;
+  userId: number;
+  vehicleId: number;
+  make: string;
+  model: string;
+  category: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  purchasedAt: string;
+  userName?: string;
+  userEmail?: string;
+}
+
+export interface OrderSummary {
+  orders: Order[];
+  totalRevenue: number;
+  totalUnitsSold: number;
 }
 
 export interface FieldError {
